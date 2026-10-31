@@ -65,6 +65,8 @@ h2{margin:0;font:400 clamp(22px,2.2vw,34px)/1.2 var(--disp)}
 #camMsg{margin:0;line-height:1.7;font-size:18px;white-space:pre-line}
 #camErr .row{width:min(440px,100%)}
 .shootbar{display:flex;gap:10px;justify-content:center}
+#camBtn{max-width:min(340px,40vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#camBtn[hidden]{display:none}
 .mini{height:64px;border-radius:10px;border:3px solid transparent;display:block}
 .mini.cur{border-color:var(--sun)}
 /* 사진 고르기 */
@@ -115,7 +117,7 @@ h2{margin:0;font:400 clamp(22px,2.2vw,34px)/1.2 var(--disp)}
   <div class="topbar">
     <button id="cancelBtn" class="btn sm">취소</button>
     <h2 id="shootTitle"></h2>
-    <span></span>
+    <button id="camBtn" class="btn sm" hidden></button>
   </div>
   <div class="stagewrap">
     <div class="stage" id="stage">
@@ -320,12 +322,52 @@ $('#goShoot').onclick=()=>{S.photos=[];S.order=[];enterShoot()};
 
 /* ---------- 카메라 ---------- */
 const video=$('#video');
+let camTok=0;
+const BUILTIN=/front|back|facetime|face time|전면|후면|내장|built-in|ultra wide|dual|triple|telephoto|desk view/i;
+try{S.camId=localStorage.getItem('pbcam')||''}catch(e){S.camId=''}
+async function listCams(){const d=await navigator.mediaDevices.enumerateDevices();return d.filter(x=>x.kind==='videoinput')}
+async function refreshCamBtn(){
+  const cams=await listCams(),b=$('#camBtn');
+  S.cams=cams;
+  const cur=S.stream&&S.stream.getVideoTracks()[0]?S.stream.getVideoTracks()[0].getSettings().deviceId:'';
+  const c=cams.find(x=>x.deviceId===cur);
+  b.hidden=cams.length<2;
+  b.textContent='카메라: '+((c&&c.label)||'기본');
+}
+$('#camBtn').onclick=async()=>{
+  const cams=S.cams||[];if(cams.length<2)return;
+  const cur=S.stream?S.stream.getVideoTracks()[0].getSettings().deviceId:'';
+  const i=cams.findIndex(x=>x.deviceId===cur);
+  S.camId=cams[(i+1)%cams.length].deviceId;
+  try{localStorage.setItem('pbcam',S.camId)}catch(e){}
+  await startCam();
+};
 async function startCam(){
   stopCam();$('#camErr').classList.remove('on');
+  const my=++camTok;
   try{
-    S.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1920},height:{ideal:1080}},audio:false});
-    video.srcObject=S.stream;await video.play();
+    const base={width:{ideal:1920},height:{ideal:1080}};
+    const gum=v=>navigator.mediaDevices.getUserMedia({video:v,audio:false});
+    let stream=null;
+    // 1) 직접 고른 카메라가 있으면 먼저 시도 (없어졌으면 자동으로 넘어가요)
+    if(S.camId){try{stream=await gum({...base,deviceId:{exact:S.camId}})}catch(e){S.camId=''}}
+    // 2) 아니면 일단 열고(권한/이름 확보), 외부 카메라(웹캠)가 있으면 그걸로 바꿔요
+    if(!stream){
+      stream=await gum({...base,facingMode:'user'});
+      const cams=await listCams();
+      const cur=stream.getVideoTracks()[0].getSettings().deviceId;
+      const ext=cams.find(c=>c.label&&!BUILTIN.test(c.label));
+      if(ext&&ext.deviceId!==cur){
+        stream.getTracks().forEach(t=>t.stop());
+        try{stream=await gum({...base,deviceId:{exact:ext.deviceId}})}
+        catch(e){stream=await gum({...base,facingMode:'user'})}
+      }
+    }
+    if(my!==camTok){stream.getTracks().forEach(t=>t.stop());return true}
+    S.stream=stream;
+    video.srcObject=stream;await video.play();
     video.style.transform=CONFIG.mirror?'scaleX(-1)':'none';
+    await refreshCamBtn();
     return true;
   }catch(e){
     let m='카메라를 열 수 없어요.\n브라우저 주소창의 카메라 아이콘에서 권한을 허용해 주세요.';
@@ -338,6 +380,7 @@ async function startCam(){
 }
 function stopCam(){if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null}video.srcObject=null}
 function capture(){
+  if(!video.videoWidth)return S.photos[S.photos.length-1]||document.createElement('canvas'); // 카메라 전환 중이면 직전 사진으로 대체
   const c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;
   const g=c.getContext('2d');
   if(CONFIG.mirror){g.translate(c.width,0);g.scale(-1,1)}
