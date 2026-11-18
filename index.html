@@ -112,9 +112,9 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 /* 출력 완료 */
 #done{position:fixed;inset:0;background:rgba(42,41,38,.6);display:none;align-items:center;justify-content:center;z-index:20}
 #done.on{display:flex}
-#done .card{background:#fff;border-radius:22px;padding:36px 40px;display:flex;flex-direction:column;gap:18px;text-align:center;width:min(520px,90vw)}
+#done .card{background:#fff;border-radius:22px;padding:36px 40px;display:flex;flex-direction:column;gap:18px;text-align:center;width:min(680px,92vw)}
 #printArea{display:none}
-#ver{margin-top:6px;pointer-events:auto;cursor:pointer;font:400 15px var(--body);color:#fff;opacity:.85;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.55)}
+#done .done-msg{margin:0;font:800 clamp(28px,2.8vw,42px)/1.3 var(--disp);color:var(--ink);word-break:keep-all}
 @media (orientation:portrait){
   .split{flex-direction:column}
   .panel{width:auto;max-height:55%}
@@ -137,7 +137,7 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 <!-- 1. 대기 화면 -->
 <div id="idle" class="screen on">
   <canvas id="idleBg"></canvas>
-  <div class="idle-mid"><div><h1>네컷 포토부스</h1><div id="ver"></div></div></div>
+  <div class="idle-mid"><h1>네컷 포토부스</h1></div>
   <div class="bottomcta"><button id="startBtn" class="btn pri big">촬영 시작</button></div>
 </div>
 
@@ -197,10 +197,9 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 
 <!-- 출력 후 -->
 <div id="done"><div class="card">
-  <h2>출력을 요청했어요</h2>
-  <p class="hint">프린터에서 사진을 받아가세요.</p>
-  <p class="hint" style="font-size:.85em">공유 창에서 &lsquo;프린트&rsquo;를 골라 주세요. 용지는 4x6(사진 용지), 안 떴다면 아래 버튼을 누르세요.<br>iPad는 프린터가 같은 Wi-Fi에 연결된 AirPrint 프린터여야 해요.</p>
-  <div class="row"><button id="shareBtn" class="btn">공유 · 프린트 창 열기</button><button id="againBtn" class="btn">다시 출력</button><button id="doneHome" class="btn pri">처음으로</button></div>
+  <h2>출력을 요청했어요!</h2>
+  <p class="done-msg">프린터에서 사진을 받아가세요.</p>
+  <div class="row"><button id="againBtn" class="btn">다시 출력</button><button id="doneHome" class="btn pri">처음으로</button></div>
 </div></div>
 
 <div id="printArea"></div>
@@ -216,7 +215,7 @@ function drawTo(dst,src){dst.width=src.width;dst.height=src.height;dst.getContex
 /* ===== 설정 (여기 값만 바꾸면 동작이 바뀌어요) ===== */
 const Q=new URLSearchParams(location.search);
 const CONFIG={
-  interval:+Q.get('interval')||15,  // 컷 사이 카운트다운(초). 주소 뒤에 ?interval=3 을 붙이면 빠른 테스트
+  interval:15,  // 컷 사이 카운트다운(초). 주소 뒤에 ?interval=3 을 붙이면 빠른 테스트
   shots:4,          // 한 번에 찍는 장수
   maxPhotos:8,      // 재촬영 포함 최대 장수
   mirror:true,      // 거울처럼 좌우반전 (미리보기와 결과 동일)
@@ -225,7 +224,7 @@ const CONFIG={
   twoUp:true,       // 스트립 프레임은 4x6 용지 한 장에 2개씩 인쇄
   copies:1,         // 인쇄 매수(용지 기준)
   paperW:100, paperH:148,  // 인쇄 용지(mm): Canon SELPHY CP1500 엽서 테두리 없음 100x148
-  printScale:0.93   // 인쇄 안전 여백: 프린터가 사진을 키워 가장자리를 잘라내서, 그림을 이 비율로 줄여 가운데에 둠 (1이면 줄이지 않음)
+  printScale:0.94   // 인쇄 안전 여백: 프린터가 사진을 키워 가장자리를 잘라내서, 그림을 이 비율로 줄여 가운데에 둠 (1이면 줄이지 않음)
 };
 
 /* ---------- 상태 ---------- */
@@ -367,7 +366,7 @@ function buildPick(dir){
   if(dir)box.classList.add(dir>0?'next':'prev');
   $('#pgPrev').disabled=pickPage===0;
   $('#pgNext').disabled=pickPage===pages.length-1;
-  $('#pageLabel').textContent=`${PAGE_TITLE[pg.type]}  ·  선택한 프레임: ${frame().name}`;
+  $('#pageLabel').textContent='';
   const dots=$('#pageDots');dots.innerHTML='';
   pages.forEach((_,i)=>{const b=el('button',i===pickPage?'on':'');b.setAttribute('aria-label',`${i+1}쪽`);b.onclick=()=>goPage(i-pickPage);dots.append(b)});
   layoutPick();
@@ -591,17 +590,7 @@ function safeSheet(src){
   g.drawImage(src,x,y,w,hh);
   return c;
 }
-/* 대기 화면 제목 아래 글씨를 누르면 인쇄 여백이 바뀜(0% → 2% → 4% → 6% → 7%). 현장에서 잘림을 맞출 때 사용, 기기에 저장됨 */
-const SCALES=[1,0.98,0.96,0.94,0.93];
-try{const v=parseFloat(localStorage.getItem('pb_scale2'));if(SCALES.includes(v))CONFIG.printScale=v}catch(e){}
-function showVer(){$('#ver').textContent='v28 · 엽서 100x148 · 인쇄 여백 '+Math.round((1-CONFIG.printScale)*100)+'% (눌러서 변경)'}
-$('#ver').onclick=()=>{
-  const i=SCALES.indexOf(CONFIG.printScale);CONFIG.printScale=SCALES[(i+1)%SCALES.length];
-  try{localStorage.setItem('pb_scale2',CONFIG.printScale)}catch(e){}
-  showVer();
-};
-showVer();
-function printKey(){return S.frameId+'|'+S.order.join(',')+'|'+S.photos.length+'|'+CONFIG.printScale}
+function printKey(){return S.frameId+'|'+S.order.join(',')+'|'+S.photos.length}
 /* 출력 이미지를 미리 만들어 두고(디코딩까지), 출력 버튼은 준비되면 켜진다.
    iPad Safari는 버튼을 누른 직후 바로 window.print()를 불러야 인쇄창이 뜨기 때문에, 누른 뒤에는 기다리는 작업이 없어야 한다. */
 /* JPEG 한 장을 4x6in(288x432pt) PDF로 감싼다 (여백 없이 꽉 차게). 라이브러리 없이 직접 작성 */
@@ -658,11 +647,6 @@ function doPrint(){
   if(S.printReady&&S.printKey===printKey()){go();return}
   prepPrint().then(go);
 }
-$('#shareBtn').onclick=async()=>{
-  const f=S.printFile;if(!f)return;
-  if(canSharePdf()){try{await navigator.share({files:[f],title:'네컷 사진'})}catch(e){}}
-  else{window.open(URL.createObjectURL(f),'_blank')}
-};
 $('#printBtn').onclick=doPrint;
 $('#againBtn').onclick=()=>{$('#done').classList.remove('on');doPrint()};
 
