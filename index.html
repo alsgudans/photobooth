@@ -198,7 +198,7 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 <div id="done"><div class="card">
   <h2>출력을 요청했어요</h2>
   <p class="hint">프린터에서 사진을 받아가세요.</p>
-  <p class="hint" style="font-size:.85em">공유 창에서 &lsquo;프린트&rsquo;를 고르면 여백·주소·날짜 없이 사진 크기대로 인쇄돼요. 안 떴다면 아래 버튼을 누르세요.<br>iPad는 프린터가 같은 Wi-Fi에 연결된 AirPrint 프린터여야 해요.</p>
+  <p class="hint" style="font-size:.85em">공유 창에서 &lsquo;프린트&rsquo;를 골라 주세요. 용지는 4x6(사진 용지), 안 떴다면 아래 버튼을 누르세요.<br>iPad는 프린터가 같은 Wi-Fi에 연결된 AirPrint 프린터여야 해요.</p>
   <div class="row"><button id="shareBtn" class="btn">공유 · 프린트 창 열기</button><button id="againBtn" class="btn">다시 출력</button><button id="doneHome" class="btn pri">처음으로</button></div>
 </div></div>
 
@@ -455,6 +455,10 @@ async function startCam(){
   }
 }
 function stopCam(){if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null}video.srcObject=null}
+function isDark(c){
+  try{const t=document.createElement('canvas');t.width=t.height=16;const g=t.getContext('2d');g.drawImage(c,0,0,16,16);
+    const d=g.getImageData(0,0,16,16).data;let s=0;for(let i=0;i<d.length;i+=4)s+=d[i]+d[i+1]+d[i+2];return s/(256*3)<10}catch(e){return false}
+}
 function capture(){
   if(!video.videoWidth)return S.photos[S.photos.length-1]||document.createElement('canvas'); // 카메라 전환 중이면 직전 사진으로 대체
   const c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;
@@ -503,7 +507,9 @@ async function runShoot(sid){
     $('#count').textContent='';
     beep(1200,.15);
     const fl=$('#flash');fl.classList.remove('go');void fl.offsetWidth;fl.classList.add('go');
-    S.photos.push(capture());updateShootUI();
+    let shot=capture();
+    for(let k=0;k<8&&isDark(shot);k++){await sleep(250);if(sid!==S.sid)return;shot=capture()}   // 카메라가 막 켜져 까만 화면이면 다시 찍기
+    S.photos.push(shot);updateShootUI();
     await sleep(900);if(sid!==S.sid)return;
   }
   S.shooting=false;S.cur=-1;stopCam();goReview();
@@ -606,13 +612,13 @@ async function prepPrint(){
     const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.95));
     const jpg=new Uint8Array(await blob.arrayBuffer());
     if(S.printKey!==key)return;
-    S.printFile=new File([makePdf(jpg,CONFIG.copies)],'photobooth.pdf',{type:'application/pdf'});
+    S.printFile=new File([jpg],'photobooth.jpg',{type:'image/jpeg'});S.printPdf=new File([makePdf(jpg,CONFIG.copies)],'photobooth.pdf',{type:'application/pdf'});
   }catch(e){}
   if(S.printKey!==key)return;
   S.printReady=true;
   if(S.order.length>=4)$('#printBtn').disabled=false;
 }
-function canSharePdf(){const f=S.printFile;return !!(f&&navigator.canShare&&navigator.canShare({files:[f]}))}
+function canSharePdf(){/* 이름은 그대로, 실제로는 공유할 파일(JPEG)이 공유 가능한지 확인 */const f=S.printFile;return !!(f&&navigator.canShare&&navigator.canShare({files:[f]}))}
 function doPrint(){
   if(S.order.length<4)return;
   const go=()=>{
