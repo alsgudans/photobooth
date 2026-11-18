@@ -122,11 +122,11 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 }
 @media (prefers-reduced-motion:reduce){#count.pop,.pickgrid.next,.pickgrid.prev{animation:none}}
 @media print{
- @page{size:4in 6in;margin:0}
+ @page{size:100mm 148mm;margin:0}
  html,body{overflow:visible!important;height:auto!important;background:#fff!important}
  body>*:not(#printArea){display:none!important}
  #printArea{display:block}
- #printArea img{display:block;width:4in;height:6in;object-fit:contain;background:#fff;break-after:page;page-break-after:always}
+ #printArea img{display:block;width:100mm;height:148mm;object-fit:contain;background:#fff;break-after:page;page-break-after:always}
  #printArea img:last-child{break-after:auto;page-break-after:auto}
 }
 </style>
@@ -223,6 +223,7 @@ const CONFIG={
   showDate:false,   // 프레임 하단 날짜
   twoUp:true,       // 스트립 프레임은 4x6 용지 한 장에 2개씩 인쇄
   copies:1,         // 인쇄 매수(용지 기준)
+  paperW:100, paperH:148,  // 인쇄 용지(mm): Canon SELPHY CP1500 엽서 테두리 없음 100x148
   printScale:0.98   // 인쇄 안전 여백: 프린터가 사진을 키워 가장자리를 잘라내서, 그림을 이 비율로 줄여 가운데에 둠 (1이면 줄이지 않음)
 };
 
@@ -579,13 +580,13 @@ $('#retakeBtn').onclick=()=>{if(S.photos.length<CONFIG.maxPhotos){S.order=[];ent
 /* ---------- 출력 ---------- */
 /* 프린터가 테두리 없이 뽑으려고 사진을 조금 키워서 가장자리를 잘라냄 → 그림을 약간 줄이고, 비는 가장자리는 끝 한 줄을 늘려 채운다 */
 function safeSheet(src){
-  const k=CONFIG.printScale;if(!(k<1))return src;
-  const W=src.width,H=src.height,w=Math.round(W*k),hh=Math.round(H*k),x=Math.floor((W-w)/2),y=Math.floor((H-hh)/2);
+  const W=src.width,H=Math.round(W*CONFIG.paperH/CONFIG.paperW);   // 용지 비율 (1200x1776)
+  const s=Math.min(CONFIG.printScale||1,H/src.height),w=Math.round(src.width*s),hh=Math.round(src.height*s),x=Math.floor((W-w)/2),y=Math.floor((H-hh)/2);
   const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
   g.imageSmoothingQuality='high';
   /* 비는 가장자리는 끝 한 줄을 늘려 채움 (그림 내용이 겹쳐 보이지 않게) */
-  g.drawImage(src,0,0,W,1,0,0,W,y+1);g.drawImage(src,0,H-1,W,1,0,y+hh-1,W,H-(y+hh)+1);
-  g.drawImage(src,0,0,1,H,0,0,x+1,H);g.drawImage(src,W-1,0,1,H,x+w-1,0,W-(x+w)+1,H);
+  g.drawImage(src,0,0,src.width,1,0,0,W,y+1);g.drawImage(src,0,src.height-1,src.width,1,0,y+hh-1,W,H-(y+hh)+1);
+  g.drawImage(src,0,0,1,src.height,0,0,x+1,H);g.drawImage(src,src.width-1,0,1,src.height,x+w-1,0,W-(x+w)+1,H);
   g.drawImage(src,x,y,w,hh);
   return c;
 }
@@ -593,7 +594,8 @@ function printKey(){return S.frameId+'|'+S.order.join(',')+'|'+S.photos.length}
 /* 출력 이미지를 미리 만들어 두고(디코딩까지), 출력 버튼은 준비되면 켜진다.
    iPad Safari는 버튼을 누른 직후 바로 window.print()를 불러야 인쇄창이 뜨기 때문에, 누른 뒤에는 기다리는 작업이 없어야 한다. */
 /* JPEG 한 장을 4x6in(288x432pt) PDF로 감싼다 (여백 없이 꽉 차게). 라이브러리 없이 직접 작성 */
-function makePdf(jpg,pages){
+function makePdf(jpg,pages,iw,ih){
+  const PW=(CONFIG.paperW*72/25.4).toFixed(2),PH=(CONFIG.paperH*72/25.4).toFixed(2);
   const enc=new TextEncoder(),parts=[],offs=[];let len=0;
   const put=x=>{const u=typeof x==='string'?enc.encode(x):x;parts.push(u);len+=u.length};
   const obj=(n,body)=>{offs[n]=len;put(n+' 0 obj\n'+body+'\nendobj\n')};
@@ -601,10 +603,10 @@ function makePdf(jpg,pages){
   const kids=[];for(let i=0;i<pages;i++)kids.push((6+i)+' 0 R');
   obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
   obj(2,`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pages} >>`);
-  const cs='q 288 0 0 432 0 0 cm /Im0 Do Q';obj(3,'<< /Length '+cs.length+' >>\nstream\n'+cs+'\nendstream');
-  offs[4]=len;put(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width 1200 /Height 1800 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`);put(jpg);put('\nendstream\nendobj\n');
+  const cs='q '+PW+' 0 0 '+PH+' 0 0 cm /Im0 Do Q';obj(3,'<< /Length '+cs.length+' >>\nstream\n'+cs+'\nendstream');
+  offs[4]=len;put(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${iw} /Height ${ih} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`);put(jpg);put('\nendstream\nendobj\n');
   obj(5,'<< /ProcSet [/PDF /ImageB /ImageC] /XObject << /Im0 4 0 R >> >>');
-  for(let i=0;i<pages;i++)obj(6+i,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 288 432] /Contents 3 0 R /Resources 5 0 R >>');
+  for(let i=0;i<pages;i++)obj(6+i,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Contents 3 0 R /Resources 5 0 R >>');
   const n=6+pages,xs=len;
   let x='xref\n0 '+n+'\n0000000000 65535 f \n';
   for(let i=1;i<n;i++)x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
@@ -625,7 +627,7 @@ async function prepPrint(){
     const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.95));
     const jpg=new Uint8Array(await blob.arrayBuffer());
     if(S.printKey!==key)return;
-    S.printFile=new File([jpg],'photobooth.jpg',{type:'image/jpeg'});S.printPdf=new File([makePdf(jpg,CONFIG.copies)],'photobooth.pdf',{type:'application/pdf'});
+    S.printFile=new File([jpg],'photobooth.jpg',{type:'image/jpeg'});S.printPdf=new File([makePdf(jpg,CONFIG.copies,canvas.width,canvas.height)],'photobooth.pdf',{type:'application/pdf'});
   }catch(e){}
   if(S.printKey!==key)return;
   S.printReady=true;
