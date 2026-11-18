@@ -223,7 +223,7 @@ const CONFIG={
   showDate:false,   // 프레임 하단 날짜
   twoUp:true,       // 스트립 프레임은 4x6 용지 한 장에 2개씩 인쇄
   copies:1,         // 인쇄 매수(용지 기준)
-  printScale:0.93   // 인쇄 안전 여백: 프린터가 사진을 키워 가장자리를 잘라내서, 그림을 이 비율로 줄여 가운데에 둠 (1이면 줄이지 않음)
+  printScale:0.98   // 인쇄 안전 여백: 프린터가 사진을 키워 가장자리를 잘라내서, 그림을 이 비율로 줄여 가운데에 둠 (1이면 줄이지 않음)
 };
 
 /* ---------- 상태 ---------- */
@@ -577,15 +577,15 @@ new ResizeObserver(fitShots).observe($('#shotWrap'));
 $('#retakeBtn').onclick=()=>{if(S.photos.length<CONFIG.maxPhotos){S.order=[];enterShoot()}};
 
 /* ---------- 출력 ---------- */
-/* 프린터가 테두리 없이 뽑으려고 사진을 조금 키워서 가장자리를 잘라냄 → 그림을 약간 줄이고, 비는 가장자리는 원래 그림으로 채운다 */
+/* 프린터가 테두리 없이 뽑으려고 사진을 조금 키워서 가장자리를 잘라냄 → 그림을 약간 줄이고, 비는 가장자리는 끝 한 줄을 늘려 채운다 */
 function safeSheet(src){
   const k=CONFIG.printScale;if(!(k<1))return src;
   const W=src.width,H=src.height,w=Math.round(W*k),hh=Math.round(H*k),x=Math.floor((W-w)/2),y=Math.floor((H-hh)/2);
   const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
   g.imageSmoothingQuality='high';
-  let fill=src;   // 바깥 여백은 칸 없는 프레임 그림으로 채움 (프린터가 잘라내는 부분)
-  try{const f=frame(),L=LAYOUT[f.type];if(f.type==='grid'&&L.W===W&&L.H===H){const b=document.createElement('canvas');b.width=W;b.height=H;f.bg(b.getContext('2d'),L);fill=b}}catch(e){}
-  g.drawImage(fill,0,0);
+  /* 비는 가장자리는 끝 한 줄을 늘려 채움 (그림 내용이 겹쳐 보이지 않게) */
+  g.drawImage(src,0,0,W,1,0,0,W,y+1);g.drawImage(src,0,H-1,W,1,0,y+hh-1,W,H-(y+hh)+1);
+  g.drawImage(src,0,0,1,H,0,0,x+1,H);g.drawImage(src,W-1,0,1,H,x+w-1,0,W-(x+w)+1,H);
   g.drawImage(src,x,y,w,hh);
   return c;
 }
