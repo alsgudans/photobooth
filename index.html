@@ -114,7 +114,7 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 #done.on{display:flex}
 #done .card{background:#fff;border-radius:22px;padding:36px 40px;display:flex;flex-direction:column;gap:18px;text-align:center;width:min(520px,90vw)}
 #printArea{display:none}
-#ver{margin-top:6px;font:400 15px var(--body);color:#fff;opacity:.85;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.55)}
+#ver{margin-top:6px;pointer-events:auto;cursor:pointer;font:400 15px var(--body);color:#fff;opacity:.85;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.55)}
 @media (orientation:portrait){
   .split{flex-direction:column}
   .panel{width:auto;max-height:55%}
@@ -137,7 +137,7 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 <!-- 1. 대기 화면 -->
 <div id="idle" class="screen on">
   <canvas id="idleBg"></canvas>
-  <div class="idle-mid"><div><h1>네컷 포토부스</h1><div id="ver">v26 · 용지 100x148 · 여백 2%</div></div></div>
+  <div class="idle-mid"><div><h1>네컷 포토부스</h1><div id="ver"></div></div></div>
   <div class="bottomcta"><button id="startBtn" class="btn pri big">촬영 시작</button></div>
 </div>
 
@@ -591,7 +591,17 @@ function safeSheet(src){
   g.drawImage(src,x,y,w,hh);
   return c;
 }
-function printKey(){return S.frameId+'|'+S.order.join(',')+'|'+S.photos.length}
+/* 대기 화면 제목 아래 글씨를 누르면 인쇄 여백이 바뀜(0% → 2% → 4% → 6%). 현장에서 잘림을 맞출 때 사용, 기기에 저장됨 */
+const SCALES=[1,0.98,0.96,0.94];
+try{const v=parseFloat(localStorage.getItem('pb_scale'));if(SCALES.includes(v))CONFIG.printScale=v}catch(e){}
+function showVer(){$('#ver').textContent='v27 · 엽서 100x148 · 인쇄 여백 '+Math.round((1-CONFIG.printScale)*100)+'% (눌러서 변경)'}
+$('#ver').onclick=()=>{
+  const i=SCALES.indexOf(CONFIG.printScale);CONFIG.printScale=SCALES[(i+1)%SCALES.length];
+  try{localStorage.setItem('pb_scale',CONFIG.printScale)}catch(e){}
+  showVer();
+};
+showVer();
+function printKey(){return S.frameId+'|'+S.order.join(',')+'|'+S.photos.length+'|'+CONFIG.printScale}
 /* 출력 이미지를 미리 만들어 두고(디코딩까지), 출력 버튼은 준비되면 켜진다.
    iPad Safari는 버튼을 누른 직후 바로 window.print()를 불러야 인쇄창이 뜨기 때문에, 누른 뒤에는 기다리는 작업이 없어야 한다. */
 /* JPEG 한 장을 4x6in(288x432pt) PDF로 감싼다 (여백 없이 꽉 차게). 라이브러리 없이 직접 작성 */
