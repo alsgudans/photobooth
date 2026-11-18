@@ -114,8 +114,7 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 #done.on{display:flex}
 #done .card{background:#fff;border-radius:22px;padding:36px 40px;display:flex;flex-direction:column;gap:18px;text-align:center;width:min(520px,90vw)}
 #printArea{display:none}
-#ver{position:fixed;left:10px;bottom:6px;font:400 11px var(--body);color:#fff;opacity:.55;z-index:5;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.5)}
-#idle:not(.on)~#ver{display:none}
+#ver{margin-top:6px;font:400 15px var(--body);color:#fff;opacity:.85;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.55)}
 @media (orientation:portrait){
   .split{flex-direction:column}
   .panel{width:auto;max-height:55%}
@@ -138,7 +137,7 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 <!-- 1. 대기 화면 -->
 <div id="idle" class="screen on">
   <canvas id="idleBg"></canvas>
-  <div class="idle-mid"><h1>네컷 포토부스</h1></div>
+  <div class="idle-mid"><div><h1>네컷 포토부스</h1><div id="ver">v26 · 용지 100x148 · 여백 2%</div></div></div>
   <div class="bottomcta"><button id="startBtn" class="btn pri big">촬영 시작</button></div>
 </div>
 
@@ -205,7 +204,6 @@ h2{margin:0;font:800 clamp(32px,3.4vw,52px)/1.2 var(--disp)}
 </div></div>
 
 <div id="printArea"></div>
-<div id="ver">v25 · 용지 100x148 · 여백 2%</div>
 
 <script>
 const $=s=>document.querySelector(s);
