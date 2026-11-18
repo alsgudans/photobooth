@@ -216,7 +216,7 @@ function drawTo(dst,src){dst.width=src.width;dst.height=src.height;dst.getContex
 /* ===== 설정 (여기 값만 바꾸면 동작이 바뀌어요) ===== */
 const Q=new URLSearchParams(location.search);
 const CONFIG={
-  interval:+Q.get('interval')||3,  // 컷 사이 카운트다운(초). 주소 뒤에 ?interval=3 을 붙이면 빠른 테스트
+  interval:+Q.get('interval')||15,  // 컷 사이 카운트다운(초). 주소 뒤에 ?interval=3 을 붙이면 빠른 테스트
   shots:4,          // 한 번에 찍는 장수
   maxPhotos:8,      // 재촬영 포함 최대 장수
   mirror:true,      // 거울처럼 좌우반전 (미리보기와 결과 동일)
@@ -225,7 +225,7 @@ const CONFIG={
   twoUp:true,       // 스트립 프레임은 4x6 용지 한 장에 2개씩 인쇄
   copies:1,         // 인쇄 매수(용지 기준)
   paperW:100, paperH:148,  // 인쇄 용지(mm): Canon SELPHY CP1500 엽서 테두리 없음 100x148
-  printScale:0.98   // 인쇄 안전 여백: 프린터가 사진을 키워 가장자리를 잘라내서, 그림을 이 비율로 줄여 가운데에 둠 (1이면 줄이지 않음)
+  printScale:0.93   // 인쇄 안전 여백: 프린터가 사진을 키워 가장자리를 잘라내서, 그림을 이 비율로 줄여 가운데에 둠 (1이면 줄이지 않음)
 };
 
 /* ---------- 상태 ---------- */
@@ -591,13 +591,13 @@ function safeSheet(src){
   g.drawImage(src,x,y,w,hh);
   return c;
 }
-/* 대기 화면 제목 아래 글씨를 누르면 인쇄 여백이 바뀜(0% → 2% → 4% → 6%). 현장에서 잘림을 맞출 때 사용, 기기에 저장됨 */
-const SCALES=[1,0.98,0.96,0.94];
-try{const v=parseFloat(localStorage.getItem('pb_scale'));if(SCALES.includes(v))CONFIG.printScale=v}catch(e){}
-function showVer(){$('#ver').textContent='v27 · 엽서 100x148 · 인쇄 여백 '+Math.round((1-CONFIG.printScale)*100)+'% (눌러서 변경)'}
+/* 대기 화면 제목 아래 글씨를 누르면 인쇄 여백이 바뀜(0% → 2% → 4% → 6% → 7%). 현장에서 잘림을 맞출 때 사용, 기기에 저장됨 */
+const SCALES=[1,0.98,0.96,0.94,0.93];
+try{const v=parseFloat(localStorage.getItem('pb_scale2'));if(SCALES.includes(v))CONFIG.printScale=v}catch(e){}
+function showVer(){$('#ver').textContent='v28 · 엽서 100x148 · 인쇄 여백 '+Math.round((1-CONFIG.printScale)*100)+'% (눌러서 변경)'}
 $('#ver').onclick=()=>{
   const i=SCALES.indexOf(CONFIG.printScale);CONFIG.printScale=SCALES[(i+1)%SCALES.length];
-  try{localStorage.setItem('pb_scale',CONFIG.printScale)}catch(e){}
+  try{localStorage.setItem('pb_scale2',CONFIG.printScale)}catch(e){}
   showVer();
 };
 showVer();
