@@ -215,7 +215,7 @@ function drawTo(dst,src){dst.width=src.width;dst.height=src.height;dst.getContex
 /* ===== 설정 (여기 값만 바꾸면 동작이 바뀌어요) ===== */
 const Q=new URLSearchParams(location.search);
 const CONFIG={
-  interval:+Q.get('interval')||15,  // 컷 사이 카운트다운(초). 주소 뒤에 ?interval=3 을 붙이면 빠른 테스트
+  interval:+Q.get('interval')||3,  // 컷 사이 카운트다운(초). 주소 뒤에 ?interval=3 을 붙이면 빠른 테스트
   shots:4,          // 한 번에 찍는 장수
   maxPhotos:8,      // 재촬영 포함 최대 장수
   mirror:true,      // 거울처럼 좌우반전 (미리보기와 결과 동일)
